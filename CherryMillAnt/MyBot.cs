@@ -8,20 +8,30 @@ namespace Ants
 	class MyBot : Bot
     {
 
+        RewardLog rewardLog;
+        List<DecisionLog> decisionLogs;
+
         public MyBot()
         {
-            State s0 = new State();
-            State s1 = new State();
-            s1.Food = true;
-            State s2 = new State();
-            s2.EnemyAnt = true;
-            StateLog sl = new StateLog("statetransitions.txt");
+            decisionLogs = new List<DecisionLog>();
+            rewardLog = new RewardLog("statetransitions.txt");
 
-            sl.Increment(s1, Action.TakeFood, s0);
-            sl.Increment(s1, Action.TakeFood, s0);
-            sl.Increment(s2, Action.RunAwayFromEnemy, s0);
+            DecisionLog dl1 = new DecisionLog();
+            DecisionLog dl2 = new DecisionLog();
+            decisionLogs.Add(dl1);
+            decisionLogs.Add(dl2);
 
-            sl.Save();
+            dl1.AddDecision(State.FromInt(1), Action.StandStill);
+            dl1.AddDecision(State.FromInt(2), Action.AttackEnemyAnt);
+            dl1.AddDecision(State.FromInt(3), Action.AttackEnemyHill);
+            dl1.AddReward(-2f);
+
+            dl2.AddDecision(State.FromInt(1), Action.TakeFood);
+            dl2.AddDecision(State.FromInt(2), Action.RunAwayFromEnemy);
+            dl2.AddDecision(State.FromInt(3), Action.AttackEnemyHill);
+            dl2.AddReward(10);
+
+            UpdateRewardLog();
         }
 
 
@@ -30,10 +40,20 @@ namespace Ants
         {
             foreach (Ant a in state.MyAnts)
             {
-               
+                
             }
 		}
-        
-        
+
+        public void UpdateRewardLog()
+        {
+            foreach (DecisionLog dl in decisionLogs)
+                dl.AddResults(rewardLog);
+            rewardLog.Save();
+        }
+
+        public override void OnGameEnd()
+        {
+            //UpdateRewardLog();
+        }
     }
 }

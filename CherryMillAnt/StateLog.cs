@@ -38,73 +38,28 @@ namespace Ants
             return x;
         }
 
-
-        public static State FromAction(State state, Action action)
-        {
-            switch (action)
-            {
-                case Action.AttackEnemyAnt:
-                    state.EnemyAnt = false;
-                    // Dood?
-                    break;
-
-                case Action.AttackEnemyHill:
-                    state.EnemyHill = false;
-                    break;
-
-                case Action.DefendHill:
-
-                    break;
-
-                case Action.GoToFriend:
-
-                    break;
-
-                case Action.RandomMove:
-
-                    break;
-
-                case Action.RunAwayFromEnemy:
-                    state.EnemyAnt = false;
-                    break;
-
-                case Action.RunAwayFromFriend:
-                    state.MyAnt = false;
-                    break;
-
-                case Action.StandStill:
-
-                    break;
-
-                case Action.TakeFood:
-                    state.Food = false;
-                    break;
-            }
-            return state;
-        }
-
-
         public override int GetHashCode()
         {
             return (Food ? 1 : 0) + (EnemyAnt ? 2 : 0) + (MyAnt ? 4 : 0) + (EnemyHill ? 8 : 0) + (MyHill ? 16 : 0) + (AirSuperiority ? 32 : 0);
         }
     }
 
-    class StateLog
+    class RewardLog
     {
-        int[,,] StateTransitions;
-        int[,,] NewStateTransitions;
-        float[, ,] Probabilities;
+        public static int _x = 64;
+        public static int _y = Enum.GetValues(typeof(Action)).Length;
 
-        int _x = 64;
-        int _y = Enum.GetValues(typeof(Action)).Length;
+        double[,] ExpectedReward;
+        int[,] Frequencies;
+        double[][] Desirability;
+
         string fname;
 
-        public StateLog(string fname)
+        public RewardLog(string fname)
         {
-            StateTransitions = new int[_x, _y, _x];
-            NewStateTransitions = new int[_x, _y, _x];
-            Probabilities = new float[_x, _y, _x];
+            ExpectedReward = new double[_x, _y];
+            Frequencies = new int[_x, _y];
+            Desirability = new double[_x][];
 
             this.fname = fname;
             StreamReader sr = new StreamReader(fname);
@@ -113,54 +68,103 @@ namespace Ants
             while ((line = sr.ReadLine()) != null)
             {
                 parts = line.Split();
-                StateTransitions[int.Parse(parts[0]), int.Parse(parts[1]), int.Parse(parts[2])] = int.Parse(parts[3]);
+                ExpectedReward[int.Parse(parts[0]), int.Parse(parts[1])] = double.Parse(parts[2]);
+                Frequencies[int.Parse(parts[0]), int.Parse(parts[1])] = int.Parse(parts[3]);
             }
             sr.Close();
 
-
-            for(int x = 0; x < _x; x++)
+            for (int x = 0; x < _x; x++)
+            {
+                Desirability[x] = new double[_y];
+                double sum = 0;
                 for (int y = 0; y < _y; y++)
-                {
-                    float n = 0;
-                    for (int z = 0; z < _x; z++)
-                        n += StateTransitions[x, y, z];
-                    for (int z = 0; z < _x; z++)
-                        Probabilities[x, y, z] = StateTransitions[x, y, z] / n;
-                }
+                    sum += ExpectedReward[x, y];
+                for (int y = 0; y < _y; y++)
+                    Desirability[x][y] = ExpectedReward[x, y] / sum;
+            }
         }
 
         public void Save()
         {
-            AddNewResults();
             StreamWriter sw = new StreamWriter(fname);
             for (int x = 0; x < _x; x++)
                 for (int y = 0; y < _y; y++)
-                    for (int z = 0; z < _x; z++)
-                        if (StateTransitions[x, y, z] != 0)
-                            sw.WriteLine(x + " " + y + " " + z + " " + StateTransitions[x, y, z]);
+                        if (Frequencies[x, y] != 0)
+                            sw.WriteLine(x + " " + y + " " + ExpectedReward[x, y] + " " + Frequencies[x, y]);
             sw.Close();
         }
 
-        public void AddNewResults()
+        public void AddResult(State s1, Action a, double reward, int freq)
         {
-            for (int x = 0; x < _x; x++)
-                for (int y = 0; y < _y; y++)
-                    for (int z = 0; z < _x; z++)
-                        StateTransitions[x, y, z] += NewStateTransitions[x, y, z];
+            int hash = s1.GetHashCode();
+            double n = (double)Frequencies[hash, (int)a];
+            double n2 = n + (double)freq;
+            ExpectedReward[hash, (int)a] = ExpectedReward[hash, (int)a] * (n / n2) + reward * ((double)freq / n2);
+            Frequencies[hash, (int)a] += freq;
         }
 
-        public void Increment(State s1, Action a, State s2)
+        public double[] GetProbabilities(State s1)
         {
-            NewStateTransitions[s1.GetHashCode(), (int)a, s2.GetHashCode()]++;
+            return Desirability[s1.GetHashCode()];
+        }
+    }
+
+    class DecisionLog
+    {
+        float DiscountFactor = 0.9f;
+        LinkedList<Tuple<State, Action>> Decisions;
+        Dictionary<State, Dictionary<Action, double>> Rewards;
+        Dictionary<State, Dictionary<Action, int>> Frequencies;
+
+        public DecisionLog()
+        {
+            Decisions = new LinkedList<Tuple<State,Action>>();
+            Rewards = new Dictionary<State, Dictionary<Action, double>>();
+            Frequencies = new Dictionary<State, Dictionary<Action, int>>();
         }
 
-        public float[] GetProbabilities(State s1, Action a)
+        public void AddDecision(State s1, Action a)
         {
-            float[] p = new float[_x];
-            int s1hash = s1.GetHashCode();
-            for (int z = 0; z < _x; z++)
-                p[z] = Probabilities[s1hash, (int)a, z];
-            return p;
+            Decisions.AddLast(new Tuple<State, Action>(s1, a));
+            if (!Rewards.ContainsKey(s1))
+            {
+                Rewards.Add(s1, new Dictionary<Action, double>());
+                Frequencies.Add(s1, new Dictionary<Action, int>());
+            }
+            if (!Rewards[s1].ContainsKey(a))
+            {
+                Rewards[s1].Add(a, 0);
+                Frequencies[s1].Add(a, 0);
+            }
+        }
+
+        public void AddReward(float reward)
+        {
+            if(Decisions.Count == 0)
+                return;
+            LinkedListNode<Tuple<State, Action>> node = Decisions.Last;
+            do
+            {
+                Frequencies[node.Value.Item1][node.Value.Item2] += 1;
+                Rewards[node.Value.Item1][node.Value.Item2] += reward;
+                reward *= DiscountFactor;
+                node = node.Previous;
+            }
+            while (node != null);
+        }
+
+        public void AddResults(RewardLog rl)
+        {
+            int f;
+            foreach (State s in Rewards.Keys)
+            {
+                foreach (Action a in Rewards[s].Keys)
+                {
+                    f = Frequencies[s][a];
+                    double rew = Rewards[s][a];
+                    rl.AddResult(s, a, Rewards[s][a] / (double)f, f);
+                }
+            }
         }
     }
 }

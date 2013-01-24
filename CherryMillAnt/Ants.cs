@@ -51,6 +51,7 @@ namespace Ants {
 						FinishTurn();
 						input.Clear();
 					} else if (line.Equals(END)) {
+                        bot.OnGameEnd();
 						break;	
 					} else {
 						input.Add(line);
