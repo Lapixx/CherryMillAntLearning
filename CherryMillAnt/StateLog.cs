@@ -172,7 +172,7 @@ namespace Ants
             Frequencies[s1][a]++;
         }
 
-        public void AddReward(float reward)
+        public void AddReward(double reward)
         {
             if(Decisions.Count == 0)
                 return;

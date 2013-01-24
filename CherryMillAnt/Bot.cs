@@ -9,6 +9,6 @@ namespace Ants {
 			System.Console.Out.WriteLine("o {0} {1} {2}", loc.Row, loc.Col, direction.ToChar());
 		}
 
-        public abstract void OnGameEnd();
+        public abstract void OnGameEnd(IGameState sate);
 	}
 }

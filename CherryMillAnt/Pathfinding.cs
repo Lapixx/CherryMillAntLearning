@@ -109,7 +109,7 @@ public static class Pathfinding
         return path;
     }
 
-    static List<Location> GetNeighbours(Location loc, IGameState state)
+    public static List<Location> GetNeighbours(Location loc, IGameState state)
     {
         List<Location> neighbours = new List<Location>();
         for (int i = 0; i < 4; i++)
