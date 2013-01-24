@@ -42,6 +42,32 @@ namespace Ants
         {
             return (Food ? 1 : 0) + (EnemyAnt ? 2 : 0) + (MyAnt ? 4 : 0) + (EnemyHill ? 8 : 0) + (MyHill ? 16 : 0) + (AirSuperiority ? 32 : 0);
         }
+
+        public HashSet<Action> GetActions()
+        {
+            HashSet<Action> result = new HashSet<Action>();
+
+            if (Food)
+                result.Add(Action.TakeFood);
+            if(EnemyAnt)
+            {
+                result.Add(Action.AttackEnemyAnt);
+                result.Add(Action.RunAwayFromEnemy);
+            }
+            if(MyAnt)
+            {
+                result.Add(Action.GoToFriend);
+                result.Add(Action.RunAwayFromFriend);
+            }
+            if(EnemyHill)
+                result.Add(Action.AttackEnemyHill);
+            if(MyHill)
+                result.Add(Action.DefendHill);
+            result.Add(Action.StandStill);
+            result.Add(Action.RandomMove);
+
+            return result;
+        }
     }
 
     class RewardLog
@@ -77,10 +103,17 @@ namespace Ants
             {
                 Desirability[x] = new double[_y];
                 double sum = 0;
+                double low = 0;
+                HashSet<Action> xs = State.FromInt(x).GetActions();
                 for (int y = 0; y < _y; y++)
-                    sum += ExpectedReward[x, y];
+                    if (ExpectedReward[x, y] < low)
+                        low = ExpectedReward[x, y];
+                for(int y = 0; y < _y; y++)
+                    if(xs.Contains((Action)y))
+                        sum += ExpectedReward[x, y] - low;
                 for (int y = 0; y < _y; y++)
-                    Desirability[x][y] = ExpectedReward[x, y] / sum;
+                    if(xs.Contains((Action)y))
+                        Desirability[x][y] = (ExpectedReward[x, y] - low) / sum;
             }
         }
 
@@ -103,7 +136,7 @@ namespace Ants
             Frequencies[hash, (int)a] += freq;
         }
 
-        public double[] GetProbabilities(State s1)
+        public double[] GetDesirabilities(State s1)
         {
             return Desirability[s1.GetHashCode()];
         }
@@ -136,6 +169,7 @@ namespace Ants
                 Rewards[s1].Add(a, 0);
                 Frequencies[s1].Add(a, 0);
             }
+            Frequencies[s1][a]++;
         }
 
         public void AddReward(float reward)
