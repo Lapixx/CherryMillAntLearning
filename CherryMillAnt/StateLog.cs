@@ -18,6 +18,24 @@ namespace Ants
         public bool AirSuperiority;
         //public bool HillInDanger; 
 
+        public string Description()
+        {
+            string x = "";
+            if (Food)
+                x += "Food ";
+            if (EnemyAnt)
+                x += "Enemy ";
+            if (MyAnt)
+                x += "Friend ";
+            if (EnemyHill)
+                x += "EnemyHill ";
+            if (MyHill)
+                x += "MyHill ";
+            if (AirSuperiority)
+                x += "AirSupr ";
+            return x;
+        }
+
         public static State FromInt(int n)
         {
             State x = new State();
@@ -88,7 +106,10 @@ namespace Ants
             Desirability = new double[_x][];
 
             this.fname = fname;
+            if (!File.Exists(fname))
+                (File.CreateText(fname)).Close();
             StreamReader sr = new StreamReader(fname);
+            
             string line;
             string[] parts;
             while ((line = sr.ReadLine()) != null)

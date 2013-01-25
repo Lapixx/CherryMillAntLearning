@@ -32,7 +32,7 @@ namespace Ants
 		public override void DoTurn (IGameState state)
         {
             if(radius == default(int)) // Init
-                radius = (int)Math.Sqrt(state.ViewRadius2);
+                radius = (int)Math.Sqrt(state.ViewRadius2) / 2;
 
             foreach (Agent agent in new List<Agent>(agents)) // Die
             {
